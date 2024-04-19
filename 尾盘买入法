@@ -1,0 +1,41 @@
+import akshare as ak
+import pandas as pd
+from datetime import datetime
+
+def initialize(context):
+    run_daily(context, try_buyin, time='14:30')
+
+def handle_data(context, data):
+    pass
+
+def try_buyin(context):
+    # A股当天所有股票信息
+    all_stocks = ak.stock_zh_a_spot_em()
+    df = pd.DataFrame(all_stocks)
+
+    # 筛选
+    filtered_stocks = (
+        df.query('量比>1')
+        .query('涨跌幅>=3 and 涨跌幅<=5')
+        .query('换手率>=5 and 换手率<=10')
+        .query('总市值>=5e9 and 总市值<=2e10')
+        .sort_values(by='成交量', ascending=True)
+        .head(5)
+        )
+    
+    log.info("%s 尾盘筛选：\n%s", datetime.now(), filtered_stocks.to_string())
+    
+    # 取股票代码
+    stock_codes = filtered_stocks[['代码']]
+
+    # 定义买入数量和限价
+    amount = 0
+    limit_price = None
+
+    for stock_code in stock_codes:
+        # 创建订单
+        order(stock_code, amount, limit_price)
+
+        # log
+        order_obj = get_orders()
+        log.info("订单信息: ",order_obj)
